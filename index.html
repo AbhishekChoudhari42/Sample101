@@ -2,89 +2,111 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Fixed Audio: Mera Mann Karaoke</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mera Mann - iPhone Fix</title>
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
-        .chord-box { font-size: 80px; color: #ffcc00; margin: 20px; font-weight: bold; }
-        .lyrics { font-size: 24px; color: #888; height: 100px; }
-        .active { color: white; font-weight: bold; font-size: 30px; }
-        button { padding: 20px 40px; font-size: 20px; cursor: pointer; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold; }
-        .instructions { color: #666; margin-bottom: 20px; }
+        body { 
+            background: #000; color: #fff; font-family: -apple-system, sans-serif; 
+            text-align: center; margin: 0; display: flex; flex-direction: column; 
+            justify-content: center; height: 100vh; overflow: hidden;
+        }
+        #displayChord { font-size: 80px; font-weight: 900; color: #ffcc00; margin: 0; }
+        #displayLyric { font-size: 22px; padding: 20px; min-height: 60px; color: #ccc; }
+        .btn { 
+            background: #ffcc00; color: #000; border: none; padding: 20px 40px; 
+            font-size: 20px; font-weight: bold; border-radius: 50px; 
+            -webkit-appearance: none; margin: 20px;
+        }
+        .warning { font-size: 12px; color: #ff4757; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="instructions">1. Click "Unlock Audio" first <br> 2. Then click "Start Performance"</div>
-    
-    <button id="unlockBtn" onclick="unlockAudio()">1. UNLOCK AUDIO</button>
-    <button id="startBtn" onclick="startPerformance()" style="display:none; background: #4CAF50;">2. START PERFORMANCE</button>
+    <div id="ui">
+        <p>iPhone 16e Practice Mode</p>
+        <button class="btn" id="startBtn">TAP TO START</button>
+        <p class="warning">Make sure "Silent Mode" switch is OFF</p>
+    </div>
 
-    <div class="chord-box" id="displayChord">--</div>
-    <div class="lyrics" id="displayLyric">Wait for start...</div>
+    <div id="player" style="display:none;">
+        <div id="displayChord">--</div>
+        <div id="displayLyric">Get ready...</div>
+    </div>
 
 <script>
     let audioCtx;
 
-    // 1. THIS UNLOCKS THE SOUND CHIP
-    function unlockAudio() {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        document.getElementById('unlockBtn').style.display = 'none';
-        document.getElementById('startBtn').style.display = 'inline-block';
-        console.log("Audio Unlocked");
-    }
+    // Fixed Chord frequencies for better mobile speaker response
+    const chordFreqs = {
+        'G': [196, 246, 293, 392],
+        'C': [261, 329, 392, 523],
+        'Em': [164, 196, 246, 329],
+        'D': [293, 369, 440, 587],
+        'Bm': [246, 311, 369, 493]
+    };
 
     const songData = [
-        { time: 0, chord: 'G', text: "Intro - Get Ready..." },
+        { time: 0, chord: 'G', text: "Ready to sing?" },
         { time: 3000, chord: 'G', text: "Tujhse hi to mili hai rahat" },
         { time: 7000, chord: 'C', text: "Tu hi to meri hai chahat" },
         { time: 11000, chord: 'Em', text: "Tujhse hi to judi..." },
         { time: 13000, chord: 'D', text: "zindagi..." },
         { time: 17000, chord: 'G', text: "Mera mann kehne laga" },
-        { time: 21000, chord: 'Bm', text: "Paas aake na tu door jaa" }
+        { time: 21000, chord: 'Bm', text: "Paas aake na tu door jaa" },
+        { time: 25000, chord: 'C', text: "Chhoone de honth tere" },
+        { time: 29000, chord: 'D', text: "Zara saanson mein apni basa..." }
     ];
 
-    const chordFreqs = {
-        'G': [196, 246, 293],
-        'C': [130, 164, 196],
-        'Em': [164, 196, 246],
-        'D': [146, 220, 293],
-        'Bm': [246, 311, 369]
-    };
-
-    function playSound(chord) {
-        const freqs = chordFreqs[chord];
+    function playChord(chord) {
+        if (!audioCtx) return;
         const now = audioCtx.currentTime;
+        const freqs = chordFreqs[chord];
 
         freqs.forEach((f, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
 
-            // 'square' is louder and more distinct than 'triangle'
-            osc.type = 'square'; 
-            osc.frequency.setValueAtTime(f, now + (i * 0.05));
+            osc.type = 'triangle'; // Smoother for iPhone speakers
+            osc.frequency.setValueAtTime(f, now + (i * 0.03));
 
-            gain.gain.setValueAtTime(0.1, now); // Volume level
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
 
             osc.connect(gain);
             gain.connect(audioCtx.destination);
 
-            osc.start(now + (i * 0.05));
-            osc.stop(now + 1.5);
+            osc.start(now + (i * 0.03));
+            osc.stop(now + 1.2);
         });
     }
 
-    function startPerformance() {
-        document.getElementById('startBtn').disabled = true;
+    const startBtn = document.getElementById('startBtn');
+    
+    // Use 'touchstart' for fastest iOS response
+    startBtn.addEventListener('touchstart', init, false);
+    startBtn.addEventListener('click', init, false);
+
+    function init() {
+        if (audioCtx) return;
         
+        // Setup Audio Context
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // iOS requires resuming state
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+
+        // Hide UI and Show Player
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('player').style.display = 'block';
+
+        // Start Song Logic
         songData.forEach(item => {
             setTimeout(() => {
                 document.getElementById('displayChord').innerText = item.chord;
                 document.getElementById('displayLyric').innerText = item.text;
-                playSound(item.chord);
+                playChord(item.chord);
             }, item.time);
         });
     }
