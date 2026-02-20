@@ -3,57 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mera Mann - Master Practice</title>
+    <title>Pro Guitar: Mera Mann</title>
     <style>
-        :root { --gold: #ffcc00; --bg: #0a0a0a; }
+        :root { --gold: #ffcc00; --bg: #050505; }
         body { 
-            background: var(--bg); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: var(--bg); color: #fff; font-family: -apple-system, sans-serif; 
             text-align: center; margin: 0; display: flex; flex-direction: column; height: 100vh;
         }
-        #setup { display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 20px; }
-        #player { display: none; padding: 40px 20px; flex-grow: 1; }
-        
-        .chord-name { font-size: 100px; font-weight: 900; color: var(--gold); margin: 0; text-shadow: 0 0 30px rgba(255,204,0,0.3); }
-        .strum-indicator { font-size: 14px; letter-spacing: 5px; color: #666; margin-bottom: 20px; }
-        .lyrics { font-size: 28px; font-weight: 300; line-height: 1.4; margin-top: 20px; transition: all 0.3s; }
-        
+        #setup { display: flex; flex-direction: column; justify-content: center; height: 100%; }
+        #player { display: none; padding: 40px 20px; }
+        .chord-name { font-size: 110px; font-weight: 900; color: var(--gold); margin: 0; }
+        .lyrics { font-size: 28px; margin-top: 30px; font-weight: 300; min-height: 80px; }
         .btn { 
-            background: var(--gold); color: #000; border: none; padding: 20px 50px; 
-            font-size: 22px; font-weight: bold; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            background: var(--gold); border: none; padding: 20px 60px; 
+            font-size: 22px; font-weight: bold; border-radius: 50px;
         }
-        .highlight { color: #fff; font-weight: 700; transform: scale(1.1); }
     </style>
 </head>
 <body>
 
     <div id="setup">
-        <h2 style="color: var(--gold)">Mera Mann Kehne Laga</h2>
-        <p>Strumming: D - D - UU - DU</p>
-        <button class="btn" onclick="startPerformance()">START SESSION</button>
-        <p style="font-size: 12px; color: #444; margin-top: 15px;">Ensure ringer is ON (not silent mode)</p>
+        <h1 style="color: var(--gold)">Mera Mann</h1>
+        <p>Acoustic Guitar Engine v2.0</p>
+        <button class="btn" onclick="startApp()">START PERFORMANCE</button>
     </div>
 
     <div id="player">
-        <div class="strum-indicator">STRUM: D - D - U U - D U</div>
         <div class="chord-name" id="chord">--</div>
         <div class="lyrics" id="lyric">Get ready...</div>
     </div>
 
 <script>
     let audioCtx;
-    
-    // Exact frequencies for a balanced sound
-    const chords = {
-        'G':  [196, 246, 293, 392],
-        'C':  [261, 329, 392, 523],
-        'Em': [164, 196, 246, 329],
-        'D':  [146, 220, 293, 369],
-        'Bm': [246, 311, 369, 493]
+
+    // Frequencies for G, C, Em, D, Bm
+    const chordNotes = {
+        'G':  [98.00, 123.47, 146.83, 196.00, 246.94, 392.00],
+        'C':  [130.81, 164.81, 196.00, 261.63, 329.63],
+        'Em': [82.41, 123.47, 164.81, 196.00, 246.94, 329.63],
+        'D':  [146.83, 220.00, 293.66, 369.99, 587.33],
+        'Bm': [123.47, 185.00, 246.94, 311.13, 369.99]
     };
 
-    // Corrected Lyrics & Timing (approx. 85 BPM)
     const song = [
-        { t: 0,    c: 'G',  l: "(Intro Strumming)" },
+        { t: 0,    c: 'G',  l: "Instrumental Intro" },
         { t: 4000, c: 'G',  l: "Tujhse hi toh mili hai raahat" },
         { t: 8000, c: 'C',  l: "Tu hi toh meri hai chaahat" },
         { t: 12000, c: 'Em', l: "Tujhse hi toh judi..." },
@@ -65,63 +58,74 @@
         { t: 32000, c: 'G',  l: "Mera mann kehne laga" },
         { t: 36000, c: 'Bm', l: "Paas aake na tu door jaa" },
         { t: 40000, c: 'C',  l: "Chhoone de hont tere" },
-        { t: 44000, c: 'D',  l: "Zara saanson mein apni basa..." },
-        { t: 48000, c: 'G',  l: "Mera mann... kehne laga..." }
+        { t: 44000, c: 'D',  l: "Zara saanson mein apni basa..." }
     ];
 
-    function strum(chordName, type = 'down') {
-        const now = audioCtx.currentTime;
-        const freqs = chords[chordName];
-        const volume = type === 'down' ? 0.3 : 0.15; // Upstrums are lighter
+    // THE REAL GUITAR ENGINE (Karplus-Strong)
+    function pluck(frequency, startTime, velocity) {
+        const duration = 2.0;
+        const sampleRate = audioCtx.sampleRate;
+        const bufferSize = sampleRate * duration;
+        const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
+        const data = buffer.getChannelData(0);
         
-        freqs.forEach((f, i) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'triangle';
-            // Strum speed: Down is slower (0.04s), Up is faster (0.02s)
-            const offset = type === 'down' ? (i * 0.04) : ((freqs.length - i) * 0.02);
-            
-            osc.frequency.setValueAtTime(f, now + offset);
-            gain.gain.setValueAtTime(volume, now + offset);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.8);
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start(now + offset);
-            osc.stop(now + offset + 0.8);
-        });
+        const period = Math.floor(sampleRate / frequency);
+        
+        // Fill initial period with noise (the pluck)
+        for (let i = 0; i < period; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        
+        // Loop the noise through a low-pass filter (the string vibration)
+        const decay = 0.992; // Higher = longer ring
+        for (let i = period; i < bufferSize; i++) {
+            data[i] = (data[i - period] + data[i - period + 1]) * 0.5 * decay;
+        }
+        
+        const source = audioCtx.createBufferSource();
+        const gain = audioCtx.createGain();
+        
+        source.buffer = buffer;
+        gain.gain.setValueAtTime(velocity, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+        
+        source.connect(gain);
+        gain.connect(audioCtx.destination);
+        source.start(startTime);
     }
 
-    // This creates the D-D-UU-DU rhythm (roughly 2 seconds per cycle)
-    function playPattern(chordName) {
-        strum(chordName, 'down');                     // D (0ms)
-        setTimeout(() => strum(chordName, 'down'), 500);  // D (500ms)
-        setTimeout(() => strum(chordName, 'up'), 750);    // U (750ms)
-        setTimeout(() => strum(chordName, 'up'), 1000);   // U (1000ms)
-        setTimeout(() => strum(chordName, 'down'), 1250); // D (1250ms)
-        setTimeout(() => strum(chordName, 'up'), 1500);   // U (1500ms)
+    function strumPattern(chordName) {
+        const notes = chordNotes[chordName];
+        const now = audioCtx.currentTime;
+
+        const playD = (offset) => {
+            notes.forEach((f, i) => pluck(f, now + offset + (i * 0.03), 0.5));
+        };
+        const playU = (offset) => {
+            [...notes].reverse().forEach((f, i) => pluck(f, now + offset + (i * 0.02), 0.2));
+        };
+
+        // D - D - UU - DU Pattern
+        playD(0);
+        playD(0.5);
+        playU(0.75);
+        playU(1.0);
+        playD(1.25);
+        playU(1.5);
     }
 
-    function startPerformance() {
+    function startApp() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-
         document.getElementById('setup').style.display = 'none';
         document.getElementById('player').style.display = 'block';
 
         song.forEach(item => {
-            // Update Visuals
             setTimeout(() => {
                 document.getElementById('chord').innerText = item.c;
                 document.getElementById('lyric').innerText = item.l;
-                
-                // Start the rhythmic pattern
-                // We run the 2-second pattern twice for each 4-second line
-                playPattern(item.c);
-                setTimeout(() => playPattern(item.c), 2000);
-                
-            }, item.time || item.t);
+                strumPattern(item.c);
+                setTimeout(() => strumPattern(item.c), 2000); // Repeat pattern for the line
+            }, item.t);
         });
     }
 </script>
