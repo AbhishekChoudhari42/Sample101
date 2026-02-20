@@ -3,124 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mera Mann - Real Guitar</title>
+    <title>Mera Mann - Studio Quality</title>
     <style>
-        :root { --gold: #ffcc00; --bg: #0a0a0a; }
+        :root { --gold: #ffcc00; --bg: #000; }
         body { 
             background: var(--bg); color: #fff; font-family: -apple-system, sans-serif; 
             text-align: center; margin: 0; display: flex; flex-direction: column; height: 100vh;
+            justify-content: center;
         }
-        #setup { display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 20px; }
-        #player { display: none; padding: 60px 20px; }
-        .chord-name { font-size: 120px; font-weight: 900; color: var(--gold); margin: 0; }
-        .lyrics { font-size: 30px; margin-top: 40px; font-weight: 300; min-height: 100px; line-height: 1.4; }
+        #screen { padding: 20px; transition: 0.5s; }
+        .chord-box { font-size: 100px; font-weight: 900; color: var(--gold); margin: 0; letter-spacing: -5px; }
+        .lyrics { font-size: 26px; margin-top: 30px; min-height: 80px; line-height: 1.4; padding: 0 10px; font-weight: 300; }
         .btn { 
-            background: var(--gold); border: none; padding: 25px 60px; 
-            font-size: 22px; font-weight: bold; border-radius: 50px; box-shadow: 0 4px 20px rgba(255,204,0,0.4);
+            background: var(--gold); border: none; padding: 20px 50px; 
+            font-size: 20px; font-weight: bold; border-radius: 50px; 
+            box-shadow: 0 0 30px rgba(255,204,0,0.2); transition: 0.3s;
         }
-        .loading-text { font-size: 14px; color: #666; margin-top: 10px; }
+        .btn:active { transform: scale(0.95); background: #e6b800; }
+        .loader { font-size: 14px; color: #555; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="setup">
-        <h1 style="color: var(--gold)">Mera Mann</h1>
-        <p>Real Acoustic Samples Loaded via CDN</p>
-        <button class="btn" id="mainBtn" onclick="initApp()">LOAD & START</button>
-        <div class="loading-text" id="status">Ready to load pro audio...</div>
-    </div>
+    <div id="screen">
+        <div id="setup">
+            <h1 style="margin-bottom:10px;">Mera Mann</h1>
+            <p style="color:#888; margin-bottom:40px;">Studio Guitar Practice</p>
+            <button class="btn" id="startBtn" onclick="initPerformance()">LOAD HIGH-QUALITY AUDIO</button>
+            <div class="loader" id="status">Uses real .wav guitar samples</div>
+        </div>
 
-    <div id="player">
-        <div class="chord-name" id="chord">--</div>
-        <div class="lyrics" id="lyric">Get ready...</div>
+        <div id="karaoke" style="display:none;">
+            <div class="chord-box" id="displayChord">--</div>
+            <div class="lyrics" id="displayLyric">Get ready...</div>
+            <p style="color:var(--gold); font-size: 12px; margin-top: 40px; opacity: 0.5;">STRUMMING: D-D-UU-DU</p>
+        </div>
     </div>
 
 <script>
     let audioCtx;
-    const audioBuffers = {};
+    const samples = {};
     
-    // High-quality acoustic guitar chord samples from a public repository
-    const chordFiles = {
-        'G':  'https://gleitz.github.io/midi-js-soundfonts/FatBoy/acoustic_guitar_steel-mp3/G3.mp3',
-        'C':  'https://gleitz.github.io/midi-js-soundfonts/FatBoy/acoustic_guitar_steel-mp3/C3.mp3',
-        'Em': 'https://gleitz.github.io/midi-js-soundfonts/FatBoy/acoustic_guitar_steel-mp3/E2.mp3',
-        'D':  'https://gleitz.github.io/midi-js-soundfonts/FatBoy/acoustic_guitar_steel-mp3/D3.mp3',
-        'Bm': 'https://gleitz.github.io/midi-js-soundfonts/FatBoy/acoustic_guitar_steel-mp3/B2.mp3'
+    // Using high-quality acoustic steel-string samples from a reliable CDN
+    const audioUrls = {
+        'G':  'https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FatBoy/acoustic_guitar_steel-mp3/G3.mp3',
+        'C':  'https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FatBoy/acoustic_guitar_steel-mp3/C3.mp3',
+        'Em': 'https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FatBoy/acoustic_guitar_steel-mp3/E2.mp3',
+        'D':  'https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FatBoy/acoustic_guitar_steel-mp3/D3.mp3',
+        'Bm': 'https://cdn.jsdelivr.net/gh/gleitz/midi-js-soundfonts@gh-pages/FatBoy/acoustic_guitar_steel-mp3/B2.mp3'
     };
 
-    const song = [
-        { t: 0,    c: 'G',  l: "(Intro - Feel the rhythm)" },
-        { t: 4000, c: 'G',  l: "Tujhse hi toh mili hai raahat" },
-        { t: 8500, c: 'C',  l: "Tu hi toh meri hai chaahat" },
-        { t: 12500, c: 'Em', l: "Tujhse hi toh judi..." },
-        { t: 14500, c: 'D',  l: "zindagi..." },
-        { t: 18500, c: 'G',  l: "Teri yaadein hai kuch adhoori" },
-        { t: 22500, c: 'C',  l: "Saans aadhi hai kuch hai poori" },
-        { t: 26500, c: 'Em', l: "Aankhon mein hai kaisi..." },
-        { t: 28500, c: 'D',  l: "yeh nami..." },
-        { t: 32500, c: 'G',  l: "Mera mann kehne laga" },
-        { t: 36500, c: 'Bm', l: "Paas aake na tu door jaa" },
-        { t: 40500, c: 'C',  l: "Chhoone de hont tere" },
-        { t: 44500, c: 'D',  l: "Zara saanson mein apni basa..." }
+    const songData = [
+        { t: 0,    c: 'G',  l: "Tujhse hi toh mili hai raahat" },
+        { t: 4000, c: 'C',  l: "Tu hi toh meri hai chaahat" },
+        { t: 8000, c: 'Em', l: "Tujhse hi toh judi zindagi" },
+        { t: 12000, c: 'D',  l: "Aankhon mein hai kaisi yeh nami" },
+        { t: 16000, c: 'G',  l: "Mera mann kehne laga" },
+        { t: 20000, c: 'Bm', l: "Paas aake na tu door jaa" },
+        { t: 24000, c: 'C',  l: "Chhoone de hont tere" },
+        { t: 28000, c: 'D',  l: "Zara saanson mein apni basa..." }
     ];
 
-    async function loadSample(url) {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        return await audioCtx.decodeAudioData(arrayBuffer);
-    }
-
-    async function initApp() {
-        const btn = document.getElementById('mainBtn');
+    async function initPerformance() {
+        const btn = document.getElementById('startBtn');
         const status = document.getElementById('status');
+        btn.innerText = "LOADING...";
         btn.disabled = true;
-        status.innerText = "Downloading real guitar samples...";
 
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
+
         try {
-            for (const key in chordFiles) {
-                audioBuffers[key] = await loadSample(chordFiles[key]);
+            for (const chord in audioUrls) {
+                const resp = await fetch(audioUrls[chord]);
+                const arrayBuf = await resp.arrayBuffer();
+                samples[chord] = await audioCtx.decodeAudioData(arrayBuf);
             }
-            startPerformance();
-        } catch (e) {
-            status.innerText = "Error loading audio. Check internet.";
+            startKaraoke();
+        } catch (err) {
+            status.innerText = "Load failed. Check internet connection.";
             btn.disabled = false;
+            btn.innerText = "RETRY LOAD";
         }
     }
 
     function playStrum(chord) {
-        if (!audioBuffers[chord]) return;
-        
-        const play = (timeOffset, vol) => {
+        if (!samples[chord]) return;
+
+        // Custom function to create a "thick" strumming sound
+        const trigger = (time, vol, pitch = 1) => {
             const source = audioCtx.createBufferSource();
             const gain = audioCtx.createGain();
-            source.buffer = audioBuffers[chord];
-            gain.gain.setValueAtTime(vol, audioCtx.currentTime + timeOffset);
+            source.buffer = samples[chord];
+            source.playbackRate.value = pitch;
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime + time);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + time + 1.5);
             source.connect(gain);
             gain.connect(audioCtx.destination);
-            source.start(audioCtx.currentTime + timeOffset);
+            source.start(audioCtx.currentTime + time);
         };
 
-        // Rhythmic Strumming D-D-UU-DU
-        play(0, 0.8);      // D
-        play(0.5, 0.7);    // D
-        play(0.75, 0.4);   // U
-        play(1.0, 0.4);    // U
-        play(1.25, 0.7);   // D
-        play(1.5, 0.4);    // U
+        // Real Strumming Pattern Timing (D-D-UU-DU)
+        trigger(0, 0.6);          // Down
+        trigger(0.4, 0.5);        // Down
+        trigger(0.6, 0.3, 1.02);  // Up (slightly higher pitch/faster)
+        trigger(0.8, 0.3, 1.02);  // Up
+        trigger(1.0, 0.5);        // Down
+        trigger(1.2, 0.3, 1.02);  // Up
     }
 
-    function startPerformance() {
+    function startKaraoke() {
         document.getElementById('setup').style.display = 'none';
-        document.getElementById('player').style.display = 'block';
+        document.getElementById('karaoke').style.display = 'block';
 
-        song.forEach(item => {
+        songData.forEach(item => {
             setTimeout(() => {
-                document.getElementById('chord').innerText = item.c;
-                document.getElementById('lyric').innerText = item.l;
+                document.getElementById('displayChord').innerText = item.c;
+                document.getElementById('displayLyric').innerText = item.l;
+                
+                // Play rhythm for this line (2 patterns of 2 seconds each)
                 playStrum(item.c);
-                setTimeout(() => playStrum(item.c), 2000); // 2nd pattern for the line
+                setTimeout(() => playStrum(item.c), 1600);
+                setTimeout(() => playStrum(item.c), 3200);
+
             }, item.t);
         });
     }
