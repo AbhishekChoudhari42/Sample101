@@ -3,111 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mera Mann - iPhone Fix</title>
+    <title>Mera Mann - Master Practice</title>
     <style>
+        :root { --gold: #ffcc00; --bg: #0a0a0a; }
         body { 
-            background: #000; color: #fff; font-family: -apple-system, sans-serif; 
-            text-align: center; margin: 0; display: flex; flex-direction: column; 
-            justify-content: center; height: 100vh; overflow: hidden;
+            background: var(--bg); color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            text-align: center; margin: 0; display: flex; flex-direction: column; height: 100vh;
         }
-        #displayChord { font-size: 80px; font-weight: 900; color: #ffcc00; margin: 0; }
-        #displayLyric { font-size: 22px; padding: 20px; min-height: 60px; color: #ccc; }
+        #setup { display: flex; flex-direction: column; justify-content: center; height: 100%; padding: 20px; }
+        #player { display: none; padding: 40px 20px; flex-grow: 1; }
+        
+        .chord-name { font-size: 100px; font-weight: 900; color: var(--gold); margin: 0; text-shadow: 0 0 30px rgba(255,204,0,0.3); }
+        .strum-indicator { font-size: 14px; letter-spacing: 5px; color: #666; margin-bottom: 20px; }
+        .lyrics { font-size: 28px; font-weight: 300; line-height: 1.4; margin-top: 20px; transition: all 0.3s; }
+        
         .btn { 
-            background: #ffcc00; color: #000; border: none; padding: 20px 40px; 
-            font-size: 20px; font-weight: bold; border-radius: 50px; 
-            -webkit-appearance: none; margin: 20px;
+            background: var(--gold); color: #000; border: none; padding: 20px 50px; 
+            font-size: 22px; font-weight: bold; border-radius: 50px; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
-        .warning { font-size: 12px; color: #ff4757; margin-top: 10px; }
+        .highlight { color: #fff; font-weight: 700; transform: scale(1.1); }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <p>iPhone 16e Practice Mode</p>
-        <button class="btn" id="startBtn">TAP TO START</button>
-        <p class="warning">Make sure "Silent Mode" switch is OFF</p>
+    <div id="setup">
+        <h2 style="color: var(--gold)">Mera Mann Kehne Laga</h2>
+        <p>Strumming: D - D - UU - DU</p>
+        <button class="btn" onclick="startPerformance()">START SESSION</button>
+        <p style="font-size: 12px; color: #444; margin-top: 15px;">Ensure ringer is ON (not silent mode)</p>
     </div>
 
-    <div id="player" style="display:none;">
-        <div id="displayChord">--</div>
-        <div id="displayLyric">Get ready...</div>
+    <div id="player">
+        <div class="strum-indicator">STRUM: D - D - U U - D U</div>
+        <div class="chord-name" id="chord">--</div>
+        <div class="lyrics" id="lyric">Get ready...</div>
     </div>
 
 <script>
     let audioCtx;
-
-    // Fixed Chord frequencies for better mobile speaker response
-    const chordFreqs = {
-        'G': [196, 246, 293, 392],
-        'C': [261, 329, 392, 523],
+    
+    // Exact frequencies for a balanced sound
+    const chords = {
+        'G':  [196, 246, 293, 392],
+        'C':  [261, 329, 392, 523],
         'Em': [164, 196, 246, 329],
-        'D': [293, 369, 440, 587],
+        'D':  [146, 220, 293, 369],
         'Bm': [246, 311, 369, 493]
     };
 
-    const songData = [
-        { time: 0, chord: 'G', text: "Ready to sing?" },
-        { time: 3000, chord: 'G', text: "Tujhse hi to mili hai rahat" },
-        { time: 7000, chord: 'C', text: "Tu hi to meri hai chahat" },
-        { time: 11000, chord: 'Em', text: "Tujhse hi to judi..." },
-        { time: 13000, chord: 'D', text: "zindagi..." },
-        { time: 17000, chord: 'G', text: "Mera mann kehne laga" },
-        { time: 21000, chord: 'Bm', text: "Paas aake na tu door jaa" },
-        { time: 25000, chord: 'C', text: "Chhoone de honth tere" },
-        { time: 29000, chord: 'D', text: "Zara saanson mein apni basa..." }
+    // Corrected Lyrics & Timing (approx. 85 BPM)
+    const song = [
+        { t: 0,    c: 'G',  l: "(Intro Strumming)" },
+        { t: 4000, c: 'G',  l: "Tujhse hi toh mili hai raahat" },
+        { t: 8000, c: 'C',  l: "Tu hi toh meri hai chaahat" },
+        { t: 12000, c: 'Em', l: "Tujhse hi toh judi..." },
+        { t: 14000, c: 'D',  l: "zindagi..." },
+        { t: 18000, c: 'G',  l: "Teri yaadein hai kuch adhoori" },
+        { t: 22000, c: 'C',  l: "Saans aadhi hai kuch hai poori" },
+        { t: 26000, c: 'Em', l: "Aankhon mein hai kaisi..." },
+        { t: 28000, c: 'D',  l: "yeh nami..." },
+        { t: 32000, c: 'G',  l: "Mera mann kehne laga" },
+        { t: 36000, c: 'Bm', l: "Paas aake na tu door jaa" },
+        { t: 40000, c: 'C',  l: "Chhoone de hont tere" },
+        { t: 44000, c: 'D',  l: "Zara saanson mein apni basa..." },
+        { t: 48000, c: 'G',  l: "Mera mann... kehne laga..." }
     ];
 
-    function playChord(chord) {
-        if (!audioCtx) return;
+    function strum(chordName, type = 'down') {
         const now = audioCtx.currentTime;
-        const freqs = chordFreqs[chord];
-
+        const freqs = chords[chordName];
+        const volume = type === 'down' ? 0.3 : 0.15; // Upstrums are lighter
+        
         freqs.forEach((f, i) => {
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-
-            osc.type = 'triangle'; // Smoother for iPhone speakers
-            osc.frequency.setValueAtTime(f, now + (i * 0.03));
-
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
-
+            
+            osc.type = 'triangle';
+            // Strum speed: Down is slower (0.04s), Up is faster (0.02s)
+            const offset = type === 'down' ? (i * 0.04) : ((freqs.length - i) * 0.02);
+            
+            osc.frequency.setValueAtTime(f, now + offset);
+            gain.gain.setValueAtTime(volume, now + offset);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + offset + 0.8);
+            
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
-            osc.start(now + (i * 0.03));
-            osc.stop(now + 1.2);
+            osc.start(now + offset);
+            osc.stop(now + offset + 0.8);
         });
     }
 
-    const startBtn = document.getElementById('startBtn');
-    
-    // Use 'touchstart' for fastest iOS response
-    startBtn.addEventListener('touchstart', init, false);
-    startBtn.addEventListener('click', init, false);
+    // This creates the D-D-UU-DU rhythm (roughly 2 seconds per cycle)
+    function playPattern(chordName) {
+        strum(chordName, 'down');                     // D (0ms)
+        setTimeout(() => strum(chordName, 'down'), 500);  // D (500ms)
+        setTimeout(() => strum(chordName, 'up'), 750);    // U (750ms)
+        setTimeout(() => strum(chordName, 'up'), 1000);   // U (1000ms)
+        setTimeout(() => strum(chordName, 'down'), 1250); // D (1250ms)
+        setTimeout(() => strum(chordName, 'up'), 1500);   // U (1500ms)
+    }
 
-    function init() {
-        if (audioCtx) return;
-        
-        // Setup Audio Context
+    function startPerformance() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // iOS requires resuming state
-        if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
 
-        // Hide UI and Show Player
-        document.getElementById('ui').style.display = 'none';
+        document.getElementById('setup').style.display = 'none';
         document.getElementById('player').style.display = 'block';
 
-        // Start Song Logic
-        songData.forEach(item => {
+        song.forEach(item => {
+            // Update Visuals
             setTimeout(() => {
-                document.getElementById('displayChord').innerText = item.chord;
-                document.getElementById('displayLyric').innerText = item.text;
-                playChord(item.chord);
-            }, item.time);
+                document.getElementById('chord').innerText = item.c;
+                document.getElementById('lyric').innerText = item.l;
+                
+                // Start the rhythmic pattern
+                // We run the 2-second pattern twice for each 4-second line
+                playPattern(item.c);
+                setTimeout(() => playPattern(item.c), 2000);
+                
+            }, item.time || item.t);
         });
     }
 </script>
