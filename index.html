@@ -2,130 +2,92 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto-Guitar Karaoke: Mera Mann</title>
+    <title>Fixed Audio: Mera Mann Karaoke</title>
     <style>
-        :root { --gold: #ffcc00; --accent: #ff4757; --bg: #0f0f0f; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
-        
-        .status-bar { position: fixed; top: 0; width: 100%; background: #222; padding: 10px; display: flex; justify-content: center; gap: 20px; z-index: 1000; border-bottom: 2px solid var(--gold); }
-        
-        .stage { max-width: 800px; width: 100%; margin-top: 60px; text-align: center; }
-        
-        .chord-indicator { font-size: 5rem; font-weight: 900; color: var(--gold); height: 120px; text-shadow: 0 0 20px rgba(255, 204, 0, 0.4); }
-        
-        .lyrics-window { height: 400px; overflow: hidden; position: relative; mask-image: linear-gradient(to bottom, transparent, black 20%, black 80%, transparent); }
-        
-        #lyric-track { transition: transform 0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
-        
-        .line { font-size: 1.8rem; padding: 20px; opacity: 0.2; transition: 0.5s; font-weight: 300; }
-        .line.active { opacity: 1; color: white; transform: scale(1.1); font-weight: 700; }
-        .line.active .chord-hint { opacity: 1; }
-
-        .chord-hint { color: var(--gold); font-size: 1rem; display: block; opacity: 0; }
-
-        .btn-play { background: var(--gold); border: none; padding: 15px 40px; border-radius: 30px; font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(255,204,0,0.3); }
-        .btn-play:hover { transform: scale(1.05); background: #e6b800; }
-        .btn-play:disabled { background: #444; color: #888; cursor: not-allowed; }
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        .chord-box { font-size: 80px; color: #ffcc00; margin: 20px; font-weight: bold; }
+        .lyrics { font-size: 24px; color: #888; height: 100px; }
+        .active { color: white; font-weight: bold; font-size: 30px; }
+        button { padding: 20px 40px; font-size: 20px; cursor: pointer; background: #ffcc00; border: none; border-radius: 10px; font-weight: bold; }
+        .instructions { color: #666; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
-<div class="status-bar">
-    <button class="btn-play" id="startBtn" onclick="startPerformance()">START PERFORMANCE</button>
-</div>
-
-<div class="stage">
-    <div class="chord-indicator" id="currentChord">--</div>
+    <div class="instructions">1. Click "Unlock Audio" first <br> 2. Then click "Start Performance"</div>
     
-    <div class="lyrics-window">
-        <div id="lyric-track">
-            <div class="line" data-time="0" data-chord="G"><span class="chord-hint">[G]</span>(Instrumental Intro)</div>
-            <div class="line" data-time="4000" data-chord="G"><span class="chord-hint">[G]</span>Tujhse hi to mili hai rahat</div>
-            <div class="line" data-time="8000" data-chord="C"><span class="chord-hint">[C]</span>Tu hi to meri hai chahat</div>
-            <div class="line" data-time="12000" data-chord="Em"><span class="chord-hint">[Em]</span>Tujhse hi to judi...</div>
-            <div class="line" data-time="14000" data-chord="D"><span class="chord-hint">[D]</span>zindagi...</div>
-            
-            <div class="line" data-time="18000" data-chord="G"><span class="chord-hint">[G]</span>Teri yaadein hai kuch adhoori</div>
-            <div class="line" data-time="22000" data-chord="C"><span class="chord-hint">[C]</span>Saans aadhi hai kuch hai puri</div>
-            <div class="line" data-time="26000" data-chord="Em"><span class="chord-hint">[Em]</span>Aankho mein hai kaisi...</div>
-            <div class="line" data-time="28000" data-chord="D"><span class="chord-hint">[D]</span>ye nami...</div>
+    <button id="unlockBtn" onclick="unlockAudio()">1. UNLOCK AUDIO</button>
+    <button id="startBtn" onclick="startPerformance()" style="display:none; background: #4CAF50;">2. START PERFORMANCE</button>
 
-            <div class="line" data-time="32000" data-chord="G"><span class="chord-hint">[G]</span>Mera mann kehne laga</div>
-            <div class="line" data-time="36000" data-chord="Bm"><span class="chord-hint">[Bm]</span>Paas aake na tu door jaa</div>
-            <div class="line" data-time="40000" data-chord="C"><span class="chord-hint">[C]</span>Chhoone de honth tere</div>
-            <div class="line" data-time="44000" data-chord="D"><span class="chord-hint">[D]</span>Zara saanson mein apni basa...</div>
-            <div class="line" data-time="50000" data-chord="G"><span class="chord-hint">[G]</span>(End)</div>
-        </div>
-    </div>
-</div>
+    <div class="chord-box" id="displayChord">--</div>
+    <div class="lyrics" id="displayLyric">Wait for start...</div>
 
 <script>
     let audioCtx;
-    const lines = document.querySelectorAll('.line');
-    const track = document.getElementById('lyric-track');
-    const chordDisplay = document.getElementById('currentChord');
 
-    const chords = {
-        'G': [196, 246, 293, 392],
-        'Bm': [246, 311, 369, 493],
-        'Em': [164, 196, 246, 329],
-        'C': [130, 164, 196, 261],
-        'D': [146, 220, 293, 369]
-    };
-
-    function playGuitarStrum(chordName) {
-        if (!audioCtx) return;
-        const now = audioCtx.currentTime;
-        const notes = chords[chordName];
-        
-        notes.forEach((freq, i) => {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, now + (i * 0.04)); // Strumming speed
-            
-            gain.gain.setValueAtTime(0.4, now + (i * 0.04));
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 2.0);
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start(now + (i * 0.04));
-            osc.stop(now + 2.0);
-        });
-        chordDisplay.innerText = chordName;
+    // 1. THIS UNLOCKS THE SOUND CHIP
+    function unlockAudio() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        document.getElementById('unlockBtn').style.display = 'none';
+        document.getElementById('startBtn').style.display = 'inline-block';
+        console.log("Audio Unlocked");
     }
 
-    async function startPerformance() {
-        // Initialize Audio
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const songData = [
+        { time: 0, chord: 'G', text: "Intro - Get Ready..." },
+        { time: 3000, chord: 'G', text: "Tujhse hi to mili hai rahat" },
+        { time: 7000, chord: 'C', text: "Tu hi to meri hai chahat" },
+        { time: 11000, chord: 'Em', text: "Tujhse hi to judi..." },
+        { time: 13000, chord: 'D', text: "zindagi..." },
+        { time: 17000, chord: 'G', text: "Mera mann kehne laga" },
+        { time: 21000, chord: 'Bm', text: "Paas aake na tu door jaa" }
+    ];
+
+    const chordFreqs = {
+        'G': [196, 246, 293],
+        'C': [130, 164, 196],
+        'Em': [164, 196, 246],
+        'D': [146, 220, 293],
+        'Bm': [246, 311, 369]
+    };
+
+    function playSound(chord) {
+        const freqs = chordFreqs[chord];
+        const now = audioCtx.currentTime;
+
+        freqs.forEach((f, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            // 'square' is louder and more distinct than 'triangle'
+            osc.type = 'square'; 
+            osc.frequency.setValueAtTime(f, now + (i * 0.05));
+
+            gain.gain.setValueAtTime(0.1, now); // Volume level
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(now + (i * 0.05));
+            osc.stop(now + 1.5);
+        });
+    }
+
+    function startPerformance() {
         document.getElementById('startBtn').disabled = true;
-        document.getElementById('startBtn').innerText = "LIVE...";
-
-        const startTime = Date.now();
-
-        lines.forEach((line, index) => {
-            const time = parseInt(line.getAttribute('data-time'));
-            const chord = line.getAttribute('data-chord');
-
+        
+        songData.forEach(item => {
             setTimeout(() => {
-                // Update Lyrics UI
-                lines.forEach(l => l.classList.remove('active'));
-                line.classList.add('active');
-                
-                // Scroll the track
-                const offset = index * 80; 
-                track.style.transform = `translateY(-${offset}px)`;
-
-                // Play Guitar Chord
-                playGuitarStrum(chord);
-
-            }, time);
+                document.getElementById('displayChord').innerText = item.chord;
+                document.getElementById('displayLyric').innerText = item.text;
+                playSound(item.chord);
+            }, item.time);
         });
     }
 </script>
-
 </body>
 </html>
